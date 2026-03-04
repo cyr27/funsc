@@ -3,404 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>科学互动教学系统 - 云端同步版</title>
+    <title>科学课堂 - 主题题库控制台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            overflow: hidden;
-            background-color: #f8fafc;
-        }
-
-        .view-container {
-            display: none;
-            height: 100vh;
-            width: 100%;
-            flex-direction: column;
-        }
-
-        .view-container.active {
-            display: flex;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-
-        /* 大富翁棋盘自适应优化 */
-        .cell {
-            aspect-ratio: 1 / 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.6rem;
-            border: 1px solid #e2e8f0;
-            position: relative;
-            transition: all 0.3s ease;
-        }
-
-        #board-mount {
-            width: 100%;
-            max-width: 500px;
-            margin: 0 auto;
-            position: relative;
-        }
-
-        .pawn {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            position: absolute;
-            transition: all 0.4s cubic-bezier(0.2, 1, 0.3, 1);
-            z-index: 20;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .owner-badge {
-            font-size: 8px;
-            font-weight: 900;
-            padding: 1px 3px;
-            border-radius: 4px;
-            margin-top: 2px;
-        }
-
-        #sync-indicator {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            font-size: 10px;
-            padding: 4px 8px;
-            border-radius: 99px;
-            z-index: 1000;
-            font-weight: bold;
-        }
-
-        @media (max-height: 700px) {
-            #board-mount { max-width: 400px; }
-            .cell { font-size: 0.5rem; }
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap');
+        body { font-family: 'Noto Sans SC', sans-serif; background-color: #0f172a; color: #f8fafc; overflow: hidden; }
+        .view-container { display: none; height: 100vh; width: 100%; flex-direction: column; }
+        .view-container.active { display: flex; }
+        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .mode-btn.active { border-color: #10b981; background-color: #ecfdf5; color: #065f46; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .topic-card { transition: all 0.3s ease; }
+        .topic-card:hover { transform: translateY(-2px); border-color: #10b981; }
     </style>
 </head>
-<body class="text-slate-900 font-sans">
+<body>
 
-    <!-- 云端状态指示器 -->
-    <div id="sync-indicator" class="bg-slate-800 text-slate-400">正在初始化认证...</div>
-
-    <!-- 1. 欢迎界面 -->
-    <div id="view-landing" class="view-container active items-center justify-center bg-slate-900 text-white p-6">
-        <div class="text-center max-w-md w-full">
-            <h1 class="text-4xl font-black mb-2 tracking-tight italic">SCIENCE <span class="text-blue-500">PRO</span></h1>
-            <p class="text-slate-400 text-sm mb-10 tracking-widest uppercase">全功能科学互动教学系统 (云同步版)</p>
+    <!-- 1. 入口页 -->
+    <div id="view-landing" class="view-container active items-center justify-center p-6">
+        <div class="w-full max-w-sm text-center">
+            <h1 class="text-6xl font-black mb-2 italic text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 to-blue-500">SCI-PRO</h1>
+            <p class="text-slate-500 text-[10px] uppercase tracking-[0.4em] mb-12">智能科学课堂交互系统</p>
             
-            <div class="grid gap-4">
-                <button onclick="accessTeacherConfig()" class="p-5 bg-slate-800 border border-slate-700 rounded-3xl hover:bg-slate-700 transition-all flex items-center justify-between group">
-                    <div class="text-left">
-                        <div class="text-lg font-bold">教师配置中心</div>
-                        <div class="text-[10px] text-slate-500 uppercase tracking-widest font-black">Admin Config (Protected)</div>
-                    </div>
-                    <span class="text-2xl opacity-50">🔒</span>
-                </button>
-
-                <div class="h-px bg-slate-800 my-2"></div>
-
-                <button onclick="startGame('monopoly')" class="p-6 bg-blue-600 rounded-3xl hover:bg-blue-500 transition-all flex items-center justify-between group shadow-xl">
-                    <div class="text-left">
-                        <div class="text-lg font-bold">大富翁竞技模式</div>
-                        <div class="text-[10px] text-blue-200 uppercase tracking-widest font-black">Monopoly Adventure</div>
-                    </div>
-                    <span class="text-3xl group-hover:rotate-12 transition-transform">🎲</span>
-                </button>
-
-                <button onclick="startGame('quiz')" class="p-6 bg-emerald-600 rounded-3xl hover:bg-emerald-500 transition-all flex items-center justify-between group shadow-xl">
-                    <div class="text-left">
-                        <div class="text-lg font-bold">纯答题挑战模式</div>
-                        <div class="text-[10px] text-emerald-200 uppercase tracking-widest font-black">Quiz Sprint</div>
-                    </div>
-                    <span class="text-3xl group-hover:scale-110 transition-transform">📝</span>
-                </button>
+            <div class="glass-panel p-8 rounded-[2.5rem] space-y-4 mb-8">
+                <input type="text" id="stu-name" placeholder="输入学生姓名" class="w-full bg-slate-800/50 py-4 px-6 rounded-2xl border border-white/10 outline-none focus:border-emerald-500 text-center font-bold text-white">
+                <input type="text" id="game-code-input" maxlength="6" placeholder="输入 6 位课堂代码" class="w-full bg-slate-800/50 py-4 px-6 rounded-2xl border border-white/10 outline-none focus:border-emerald-500 text-center text-2xl font-mono font-black tracking-widest text-emerald-400">
+                <button id="btn-stu-join" class="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-black shadow-lg shadow-emerald-500/20 active:scale-95 transition-transform">加入课堂</button>
             </div>
+
+            <button id="teacher-entry-trigger" class="px-8 py-3 rounded-full border border-slate-700 text-slate-500 text-[11px] font-black tracking-widest hover:text-white transition-all uppercase">
+                Teacher Management
+            </button>
         </div>
     </div>
 
-    <!-- 2. 教师端 -->
-    <div id="view-teacher" class="view-container bg-slate-100 overflow-hidden">
-        <header class="h-16 bg-white border-b px-6 flex items-center justify-between shrink-0">
-            <div class="flex items-center space-x-2">
-                <span class="text-xl">🛠️</span>
-                <h2 class="font-black text-sm uppercase tracking-wider">后台题目与主题管理</h2>
+    <!-- 2. 教师后台 -->
+    <div id="view-teacher" class="view-container bg-slate-50 text-slate-900">
+        <header class="h-16 bg-white border-b px-6 flex items-center justify-between shadow-sm shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-black italic shadow-lg shadow-emerald-200">S</div>
+                <div>
+                    <h2 class="font-black text-slate-800 leading-none">主题控制中心</h2>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">Science Lab Admin</span>
+                </div>
             </div>
-            <div class="flex space-x-2">
-                <button id="save-btn" onclick="saveConfig()" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:bg-blue-700">保存并同步给学生</button>
-                <button onclick="switchView('landing')" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-300">返回首页</button>
+            <div class="flex items-center gap-4">
+                <div class="text-right hidden sm:block">
+                    <p class="text-[10px] text-slate-400 font-black uppercase">Active Code</p>
+                    <div id="active-code-display" class="font-mono font-black text-emerald-600 text-xl tracking-tighter">------</div>
+                </div>
+                <button onclick="location.reload()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
             </div>
         </header>
+        
+        <div class="flex-1 flex overflow-hidden">
+            <!-- 侧边控制栏 -->
+            <aside class="w-72 border-r bg-white p-6 flex flex-col gap-6 overflow-y-auto shrink-0">
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">科学探索主题</label>
+                    <select id="t-topic" class="w-full p-4 bg-slate-100 rounded-2xl font-bold border-2 border-transparent focus:border-emerald-500 outline-none appearance-none transition-all cursor-pointer">
+                        <option value="人类">🧠 人类</option>
+                        <option value="动物">🦁 动物</option>
+                        <option value="植物">🌿 植物</option>
+                        <option value="物理科学">⚡ 物理科学</option>
+                        <option value="材料科学">🧪 材料科学</option>
+                        <option value="地球与宇宙">🌌 地球与宇宙</option>
+                    </select>
+                </div>
 
-        <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
-            <aside class="w-full md:w-72 bg-white border-r p-6 overflow-y-auto custom-scrollbar shrink-0">
-                <h3 class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">全局设置</h3>
-                <div class="space-y-6">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-2">教学主题 (Topic)</label>
-                        <select id="t-topic" onchange="changeTopicTemplate()" class="w-full p-3 bg-slate-50 border rounded-xl text-xs font-bold outline-none">
-                            <option value="人类">👤 人类系统</option>
-                            <option value="动物">🦁 动物保护</option>
-                            <option value="植物">🌿 植物机制</option>
-                            <option value="物理科学">⚡ 物理科学</option>
-                            <option value="材料科学">🧪 材料科学</option>
-                            <option value="地球与宇宙">🌍 地球与宇宙</option>
-                        </select>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">游戏交互模式</label>
+                    <div class="grid grid-cols-1 gap-2">
+                        <button id="mode-quiz" class="mode-btn active w-full p-3 rounded-xl border-2 text-left flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">Q</div>
+                            <div>
+                                <p class="font-bold text-sm">Quiz</p>
+                                <p class="text-[10px] opacity-60">急速科学竞答</p>
+                            </div>
+                        </button>
+                        <button id="mode-monopoly" class="mode-btn w-full p-3 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-500 text-left flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-slate-200 text-slate-400 flex items-center justify-center font-bold">M</div>
+                            <div>
+                                <p class="font-bold text-sm">Monopoly</p>
+                                <p class="text-[10px] opacity-60">科学知识大富翁</p>
+                            </div>
+                        </button>
                     </div>
-                    <div class="p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                        <p class="text-[10px] text-amber-700 font-bold">中央控制模式已开启：保存后所有学生端将同步。建议每个主题保留 20 题。</p>
+                </div>
+
+                <div class="mt-auto pt-6 border-t space-y-3">
+                    <button id="btn-save-gen" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black active:scale-95 transition-all shadow-xl shadow-slate-200">创建并同步题库</button>
+                    <div id="teacher-controls" class="hidden opacity-0 transform translate-y-4 transition-all duration-500">
+                        <button id="btn-start-game" class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-emerald-600/20 active:scale-95 transition-all">开启学习挑战</button>
+                        <div class="mt-4 flex justify-between items-center px-2">
+                            <span class="text-[11px] text-slate-400 font-bold uppercase">Online: <span id="ready-count" class="text-emerald-600">0</span></span>
+                            <span id="status-tag" class="text-[10px] bg-slate-200 px-2 py-0.5 rounded uppercase font-black text-slate-500">Standby</span>
+                        </div>
                     </div>
                 </div>
             </aside>
-            <section class="flex-1 p-6 overflow-y-auto custom-scrollbar bg-slate-50">
-                <div class="max-w-3xl mx-auto" id="q-editor-list"></div>
-            </section>
-        </main>
-    </div>
 
-    <!-- 3. 大富翁模式 -->
-    <div id="view-monopoly" class="view-container bg-slate-50 overflow-hidden">
-        <nav class="h-14 bg-white border-b px-4 flex items-center justify-between shrink-0 shadow-sm">
-            <h2 class="font-black text-xs uppercase" id="m-topic-display">加载中...</h2>
-            <button onclick="switchView('landing')" class="text-[10px] font-black p-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors">退出</button>
-        </nav>
-
-        <main class="flex-1 flex flex-col md:flex-row overflow-hidden p-2 gap-2">
-            <div id="game-sidebar" class="w-full md:w-56 shrink-0 flex md:flex-col gap-2 overflow-x-auto pb-2 md:pb-0">
-                <div id="p1-card" class="min-w-[120px] flex-1 bg-white p-3 rounded-xl border-l-4 border-red-500 shadow-sm">
-                    <div class="text-[8px] font-black text-slate-400 uppercase">P1 经费</div>
-                    <div class="text-xl font-black">$<span id="p1-cash">1000</span></div>
-                </div>
-                <div id="p2-card" class="min-w-[120px] flex-1 bg-white p-3 rounded-xl border-l-4 border-blue-500 shadow-sm opacity-50">
-                    <div class="text-[8px] font-black text-slate-400 uppercase">P2 经费</div>
-                    <div class="text-xl font-black">$<span id="p2-cash">1000</span></div>
-                </div>
-                <div class="min-w-[150px] bg-white p-3 rounded-xl border text-center shadow-sm flex-1 flex flex-col justify-center">
-                    <div id="dice" class="text-3xl font-black mb-2">?</div>
-                    <button id="roll-btn" onclick="rollDice()" class="w-full bg-slate-900 text-white py-2 rounded-lg font-black text-[10px] hover:bg-slate-800 active:scale-95 transition-all">🎲 掷骰子</button>
-                </div>
-            </div>
-
-            <div class="flex-1 bg-white rounded-2xl border shadow-inner relative flex items-center justify-center overflow-auto p-4 custom-scrollbar">
-                <div id="board-mount" class="grid grid-cols-6 grid-rows-4 gap-1 p-2"></div>
-            </div>
-        </main>
-    </div>
-
-    <!-- 4. 纯答题模式 -->
-    <div id="view-quiz" class="view-container bg-emerald-50 overflow-hidden">
-        <nav class="h-16 bg-white border-b px-6 flex items-center justify-between shrink-0 shadow-sm">
-            <h2 class="font-black text-sm uppercase">科学冲刺</h2>
-            <button onclick="switchView('landing')" class="text-xs font-black p-2 hover:bg-slate-100 rounded-lg">退出</button>
-        </nav>
-        <main class="flex-1 flex items-center justify-center p-6">
-            <div class="max-w-xl w-full bg-white rounded-[2.5rem] shadow-xl p-10" id="quiz-container">
-                <div id="quiz-content">
-                    <div class="flex justify-between items-center mb-6">
-                        <span class="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-full" id="quiz-progress">第 1 题</span>
-                        <span class="text-xs font-black text-slate-400 uppercase">得分: <span id="quiz-score" class="text-emerald-600">0</span></span>
+            <!-- 动态题库编辑器 -->
+            <main class="flex-1 p-8 bg-slate-50 overflow-y-auto">
+                <div class="max-w-3xl mx-auto">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-800 tracking-tight">题目配置清单</h2>
+                            <p class="text-slate-400 text-sm">系统已根据主题自动填充 20 道题目</p>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs font-bold text-slate-400 bg-white px-4 py-2 rounded-full shadow-sm">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            实时同步就绪
+                        </div>
                     </div>
-                    <h2 id="quiz-question" class="text-lg font-bold mb-8">加载中...</h2>
-                    <div id="quiz-options" class="grid gap-3"></div>
+                    <div id="editor-container" class="space-y-4 pb-20">
+                        <!-- 20个题目卡片将在此动态渲染 -->
+                    </div>
                 </div>
-                <div id="quiz-result" class="hidden text-center">
-                    <div class="text-5xl mb-4">🏆</div>
-                    <h2 class="text-2xl font-black mb-2">挑战完成</h2>
-                    <p class="text-slate-500 text-sm mb-8" id="quiz-final-text"></p>
-                    <button onclick="startGame('quiz')" class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-sm hover:bg-emerald-500">再次挑战</button>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- 弹窗组件 -->
-    <div id="overlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-6">
-        <div class="bg-white rounded-[2.5rem] p-10 max-w-sm w-full shadow-2xl text-center" id="pop-card">
-            <div id="pop-icon" class="text-4xl mb-4">💡</div>
-            <h4 id="pop-title" class="text-lg font-black mb-2 uppercase">提示</h4>
-            <div id="pop-body" class="text-sm text-slate-500 mb-8 font-medium"></div>
-            <div id="pop-footer" class="grid gap-2"></div>
+            </main>
         </div>
     </div>
 
-    <!-- Firebase SDK (添加中央控制逻辑) -->
+    <!-- 管理认证 -->
+    <div id="login-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[2000] hidden flex items-center justify-center p-6">
+        <div class="bg-white text-slate-900 rounded-[3rem] p-10 w-full max-w-sm shadow-2xl scale-95 animate-in fade-in zoom-in duration-300">
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-3xl flex items-center justify-center mb-6 mx-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <h3 class="text-2xl font-black mb-2 text-center">教师认证</h3>
+            <p class="text-slate-400 text-xs mb-8 text-center uppercase tracking-widest font-bold">Secure Access Only</p>
+            <input type="password" id="admin-pwd" placeholder="输入访问代码" class="w-full bg-slate-100 p-5 rounded-2xl mb-6 outline-none border-2 border-transparent focus:border-emerald-500 text-center text-2xl tracking-[0.5em] font-black transition-all">
+            <div class="flex gap-4">
+                <button id="btn-cancel-login" class="flex-1 py-4 font-bold text-slate-400 hover:text-slate-600 transition-colors">返回</button>
+                <button id="btn-confirm-login" class="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black active:scale-95 transition-transform shadow-xl">确认登录</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 获取环境提供的全局变量
+        // 主题题库数据源
+        const topicDatabases = {
+            "人类": { icon: "🧠", prefix: "人体知识", base: "关于人类生理、健康与心理的问题" },
+            "动物": { icon: "🦁", prefix: "动物世界", base: "关于哺乳动物、昆虫、海洋生物的问题" },
+            "植物": { icon: "🌿", prefix: "植物奥秘", base: "关于光合作用、种子、森林生态的问题" },
+            "物理科学": { icon: "⚡", prefix: "物理探索", base: "关于力学、电磁学、声光热的问题" },
+            "材料科学": { icon: "🧪", prefix: "物质研究", base: "关于化学反应、原子结构、新材料的问题" },
+            "地球与宇宙": { icon: "🌌", prefix: "寰宇地理", base: "关于地质构造、行星、黑洞与恒星的问题" }
+        };
+
         const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'science-hub-v2';
-        const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'sci-lab-v3';
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let currentUser = null;
-
-        // 初始化认证逻辑
-        async function initAuth() {
-            try {
-                if (initialToken) {
-                    await signInWithCustomToken(auth, initialToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (e) {
-                console.error("Auth failed:", e);
-                document.getElementById('sync-indicator').innerText = "🔴 认证失败";
-            }
-        }
-
-        // 监听认证状态变化后再启动监听器 (Mandatory Rule 3)
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                document.getElementById('sync-indicator').innerText = "🟢 已连线中央服务器";
-                document.getElementById('sync-indicator').className = "bg-green-600 text-white p-2 rounded-full fixed bottom-2 right-2 text-[10px] z-[1000]";
-                
-                // 启动实时监听 (Mandatory Rule 1: 必须使用 artifacts/appId/public/data/ 路径)
-                startLiveSync();
-            } else {
-                currentUser = null;
-                document.getElementById('sync-indicator').innerText = "🟡 正在尝试连接...";
-            }
-        });
-
-        function startLiveSync() {
-            if (!currentUser) return;
-            // 监听老师的设置变化
-            const configDoc = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'liveConfig');
-            
-            onSnapshot(configDoc, (snapshot) => {
-                if (snapshot.exists()) {
-                    const data = snapshot.data();
-                    window.currentConfig = data;
-                    console.log("云端配置已更新:", data.topic);
-                    
-                    // 动态更新界面显示
-                    const display = document.getElementById('m-topic-display');
-                    if(display) display.innerText = data.topic;
-                    
-                    // 如果在编辑器中，也同步更新
-                    const topicSelect = document.getElementById('t-topic');
-                    if(topicSelect && topicSelect.value !== data.topic) {
-                        topicSelect.value = data.topic;
-                        if(typeof renderEditor === 'function') renderEditor();
-                    }
-                }
-            }, (err) => {
-                console.error("同步失败 (权限不足或路径错误):", err);
-                document.getElementById('sync-indicator').innerText = "🔴 同步异常";
-            });
-        }
-
-        // 全局保存函数
-        window.saveConfig = async () => {
-            if (!currentUser) {
-                window.pop("⚠️ 未连接", "请等待服务器连接成功后再操作。", [{t: "重试", f: "hidePop();"}]);
-                return;
-            }
-            const btn = document.getElementById('save-btn');
-            btn.disabled = true;
-            btn.innerText = "同步中...";
-
-            try {
-                const configDoc = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'liveConfig');
-                await setDoc(configDoc, window.currentConfig);
-                window.pop("✅ 同步成功", "中央配置已发布。所有学生端已实时同步最新题目。", [{t: "完成", f: "hidePop();"}]);
-            } catch (e) {
-                console.error("Save error:", e);
-                window.pop("❌ 同步失败", "由于权限问题，无法保存配置。", [{t: "确认", f: "hidePop();"}]);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "保存并同步给学生";
-            }
+        const state = {
+            user: null,
+            gameMode: 'quiz',
+            currentTopic: '人类',
+            questions: []
         };
 
-        // 执行初始化
-        initAuth();
-    </script>
+        const getSessionRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'session_v3', 'current');
 
-    <script>
-        const MASTER_DB = {
-            "人类": [
-                { q: "大脑的哪个部分负责身体平衡？", a: ["小脑", "脑干", "垂体", "额叶"], c: 0 },
-                { q: "红血球的生命周期大约是多少天？", a: ["120天", "10天", "365天", "1小时"], c: 0 },
-                { q: "人体中最长的骨头叫什么？", a: ["股骨", "肋骨", "脊椎", "颅骨"], c: 0 },
-                { q: "心脏跳动一次大约需要多少秒？", a: ["0.8秒", "5秒", "10秒", "0.1秒"], c: 0 },
-                ...Array(16).fill(null).map((_,i) => ({ q: `[人类系统] 进阶挑战：第 ${i+5} 题`, a: ["选项 A", "正确答案", "选项 C", "选项 D"], c: 1 }))
-            ],
-            "动物": Array(20).fill(null).map((_,i) => ({ q: `[动物保护] 科学题目 ${i+1}：大熊猫的主食是？`, a: ["竹子", "肉类", "水果", "草本"], c: 0 })),
-            "植物": Array(20).fill(null).map((_,i) => ({ q: `[植物机制] 科学题目 ${i+1}：植物通常通过什么呼吸？`, a: ["气孔", "根尖", "花瓣", "果皮"], c: 0 })),
-            "物理科学": Array(20).fill(null).map((_,i) => ({ q: `[物理科学] 科学题目 ${i+1}：声音在什么介质中传播最快？`, a: ["固体", "液体", "空气", "真空"], c: 0 })),
-            "材料科学": Array(20).fill(null).map((_,i) => ({ q: `[材料科学] 科学题目 ${i+1}：下列哪种材料常温下导电性能最好？`, a: ["银", "木材", "塑料", "玻璃"], c: 0 })),
-            "地球与宇宙": Array(20).fill(null).map((_,i) => ({ q: `[地球宇宙] 科学题目 ${i+1}：太阳系中体积最大的行星是？`, a: ["木星", "土星", "地球", "火星"], c: 0 }))
-        };
-
-        window.currentConfig = {
-            topic: "人类",
-            questions: JSON.parse(JSON.stringify(MASTER_DB["人类"]))
-        };
-
-        let monopolyState = { p1: { pos: 0, cash: 1000 }, p2: { pos: 0, cash: 1000 }, turn: 1, owners: {}, isMoving: false };
-        let quizState = { index: 0, score: 0, shuffled: [] };
-
-        function switchView(id) {
-            document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
-            document.getElementById(`view-${id}`).classList.add('active');
-            if (id === 'teacher') renderEditor();
+        // 生成 20 道基于主题的题目
+        function generateQuestions(topic) {
+            const info = topicDatabases[topic];
+            return Array.from({length: 20}, (_, i) => ({
+                q: `${info.icon} ${info.prefix}练习 ${i+1}: 关于${info.base}的一个具体科学问题？`,
+                a: ["正确选项 A", "干扰项 B", "干扰项 C", "干扰项 D"],
+                c: 0
+            }));
         }
 
-        function accessTeacherConfig() {
-            document.getElementById('pop-icon').innerText = "🔑";
-            document.getElementById('pop-title').innerText = "身份验证";
-            document.getElementById('pop-body').innerHTML = `
-                <p class="mb-4">请输入管理员密码以进入配置中心</p>
-                <input type="password" id="admin-pass" class="w-full p-3 border rounded-xl text-center font-bold tracking-widest outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••">
-            `;
-            document.getElementById('pop-footer').innerHTML = `
-                <button onclick="verifyPass()" class="p-4 bg-blue-600 text-white rounded-2xl text-xs font-black shadow-lg">确认进入</button>
-                <button onclick="hidePop()" class="p-2 text-slate-400 text-[10px] font-bold">取消</button>
-            `;
-            document.getElementById('overlay').classList.remove('hidden');
-        }
-
-        function verifyPass() {
-            const pass = document.getElementById('admin-pass').value;
-            if (pass === "8888") {
-                hidePop();
-                switchView('teacher');
-            } else {
-                const body = document.getElementById('pop-body');
-                body.querySelector('p').innerText = "❌ 密码错误，请重新输入";
-                body.querySelector('p').classList.add('text-red-500');
-            }
-        }
-
-        function startGame(mode) {
-            switchView(mode);
-            if(mode === 'monopoly') resetMonopoly();
-            if(mode === 'quiz') resetQuiz();
-        }
-
+        // 渲染编辑器
         function renderEditor() {
-            const list = document.getElementById('q-editor-list');
-            list.innerHTML = window.currentConfig.questions.map((q, i) => `
-                <div class="bg-white border rounded-3xl p-6 mb-4 shadow-sm">
-                    <input type="text" value="${q.q}" onchange="window.currentConfig.questions[${i}].q = this.value" class="w-full font-bold text-sm border-b mb-4 pb-2 outline-none focus:border-blue-500">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            const container = document.getElementById('editor-container');
+            container.innerHTML = state.questions.map((q, i) => `
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm transition-all hover:shadow-md animate-in slide-in-from-bottom-4 duration-300" style="animation-delay: ${i * 50}ms">
+                    <div class="flex items-start gap-4 mb-5">
+                        <div class="w-10 h-10 shrink-0 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-sm">${i+1}</div>
+                        <textarea onchange="updateQ(${i}, 'q', this.value)" class="w-full bg-slate-50 p-3 rounded-xl font-bold text-slate-700 text-sm outline-none border border-transparent focus:border-emerald-400 focus:bg-white transition-all resize-none" rows="2">${q.q}</textarea>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         ${q.a.map((opt, oi) => `
-                            <div class="flex items-center text-[11px] bg-slate-50 p-2 rounded-xl border">
-                                <input type="radio" name="c-${i}" ${q.c === oi ? 'checked' : ''} onchange="window.currentConfig.questions[${i}].c = ${oi}" class="mr-2">
-                                <input type="text" value="${opt}" onchange="window.currentConfig.questions[${i}].a[${oi}] = this.value" class="bg-transparent outline-none flex-1 font-medium">
+                            <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100 group transition-all focus-within:border-emerald-200 focus-within:bg-white">
+                                <div class="relative">
+                                    <input type="radio" name="correct-${i}" ${q.c === oi ? 'checked' : ''} onchange="updateQ(${i}, 'c', ${oi})" class="w-5 h-5 accent-emerald-500 cursor-pointer">
+                                </div>
+                                <input type="text" value="${opt}" onchange="updateOpt(${i}, ${oi}, this.value)" class="bg-transparent text-xs w-full font-medium outline-none text-slate-600">
                             </div>
                         `).join('')}
                     </div>
@@ -408,182 +204,115 @@
             `).join('');
         }
 
-        function changeTopicTemplate() {
-            const topic = document.getElementById('t-topic').value;
-            window.currentConfig.topic = topic;
-            window.currentConfig.questions = JSON.parse(JSON.stringify(MASTER_DB[topic]));
-            renderEditor();
-        }
+        window.updateQ = (qi, field, val) => { state.questions[qi][field] = val; };
+        window.updateOpt = (qi, oi, val) => { state.questions[qi].a[oi] = val; };
 
-        function resetMonopoly() {
-            monopolyState = { p1: { pos: 0, cash: 1000 }, p2: { pos: 0, cash: 1000 }, turn: 1, owners: {}, isMoving: false };
-            document.getElementById('m-topic-display').innerText = window.currentConfig.topic;
-            initBoard();
-            updateMonopolyUI();
-        }
-
-        function initBoard() {
-            const mount = document.getElementById('board-mount');
-            mount.innerHTML = `<div id="p1-p" class="pawn bg-red-600 border-2 border-white shadow-lg"></div>
-                               <div id="p2-p" class="pawn bg-blue-600 border-2 border-white shadow-lg"></div>`;
-            const path = [];
-            for(let r=0; r<4; r++) {
-                if(r%2===0) for(let c=0; c<6; c++) path.push([r,c]);
-                else for(let c=5; c>=0; c--) path.push([r,c]);
-            }
-            path.forEach((pos, i) => {
-                const cell = document.createElement('div');
-                cell.className = "cell bg-white rounded-xl shadow-sm";
-                cell.id = `cell-${i}`;
-                cell.style.gridRow = pos[0] + 1;
-                cell.style.gridColumn = pos[1] + 1;
-                cell.innerHTML = i === 0 ? "<b class='text-slate-200 font-black italic'>GO</b>" : `<span class='opacity-10 text-[8px] font-black'>${i}</span>`;
-                mount.appendChild(cell);
+        // 初始化
+        function setupHandlers() {
+            // 主题切换监听
+            const topicSelect = document.getElementById('t-topic');
+            topicSelect.addEventListener('change', (e) => {
+                state.currentTopic = e.target.value;
+                state.questions = generateQuestions(state.currentTopic);
+                renderEditor();
             });
-            setTimeout(movePawns, 100);
+
+            // 模式按钮
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-btn').forEach(b => {
+                        b.classList.remove('active', 'border-emerald-500', 'bg-emerald-50', 'text-emerald-700');
+                        b.classList.add('border-slate-100', 'bg-slate-50', 'text-slate-500');
+                    });
+                    btn.classList.add('active', 'border-emerald-500', 'bg-emerald-50', 'text-emerald-700');
+                    btn.classList.remove('border-slate-100', 'bg-slate-50', 'text-slate-500');
+                    state.gameMode = btn.id.replace('mode-', '');
+                });
+            });
+
+            // 登录逻辑
+            document.getElementById('teacher-entry-trigger').addEventListener('click', () => {
+                document.getElementById('login-modal').classList.remove('hidden');
+            });
+            document.getElementById('btn-cancel-login').addEventListener('click', () => {
+                document.getElementById('login-modal').classList.add('hidden');
+            });
+            document.getElementById('btn-confirm-login').addEventListener('click', () => {
+                if (document.getElementById('admin-pwd').value === "8888") {
+                    document.getElementById('login-modal').classList.add('hidden');
+                    document.getElementById('view-landing').classList.remove('active');
+                    document.getElementById('view-teacher').classList.add('active');
+                    // 初始加载第一套题
+                    state.questions = generateQuestions(state.currentTopic);
+                    renderEditor();
+                }
+            });
+
+            // 创建课堂 (规则3守护)
+            document.getElementById('btn-save-gen').addEventListener('click', async () => {
+                if (!state.user) return;
+                const btn = document.getElementById('btn-save-gen');
+                btn.innerText = "正在同步...";
+                btn.disabled = true;
+
+                const code = Math.floor(100000 + Math.random() * 899999).toString();
+                await setDoc(getSessionRef(), {
+                    code,
+                    mode: state.gameMode,
+                    topic: state.currentTopic,
+                    questions: state.questions,
+                    status: 'waiting',
+                    updatedAt: Date.now(),
+                    students: []
+                });
+                
+                btn.innerText = "同步成功!";
+                setTimeout(() => { 
+                    btn.innerText = "更新课堂题库"; 
+                    btn.disabled = false;
+                }, 2000);
+            });
+
+            document.getElementById('btn-start-game').addEventListener('click', async () => {
+                if (!state.user) return;
+                await updateDoc(getSessionRef(), { status: 'playing' });
+            });
         }
 
-        function movePawns() {
-            const p1 = document.getElementById('p1-p'), p2 = document.getElementById('p2-p');
-            const c1 = document.getElementById(`cell-${monopolyState.p1.pos}`);
-            const c2 = document.getElementById(`cell-${monopolyState.p2.pos}`);
-            if(c1 && p1) { p1.style.top = (c1.offsetTop + 6) + 'px'; p1.style.left = (c1.offsetLeft + 6) + 'px'; }
-            if(c2 && p2) { p2.style.top = (c2.offsetTop + 6) + 'px'; p2.style.left = (c2.offsetLeft + 20) + 'px'; }
+        // 数据订阅 (规则3)
+        let unsub = null;
+        function initSync() {
+            if (!state.user) return;
+            if (unsub) unsub();
+            unsub = onSnapshot(getSessionRef(), (snap) => {
+                if (!snap.exists()) return;
+                const data = snap.data();
+                document.getElementById('active-code-display').innerText = data.code || '------';
+                document.getElementById('ready-count').innerText = data.students?.length || 0;
+                document.getElementById('status-tag').innerText = data.status === 'playing' ? 'Playing' : 'Waiting';
+                
+                const controls = document.getElementById('teacher-controls');
+                controls.classList.remove('hidden');
+                setTimeout(() => controls.classList.remove('opacity-0', 'translate-y-4'), 10);
+            }, (err) => console.error("Firestore Error:", err));
         }
 
-        function rollDice() {
-            if (monopolyState.isMoving) return;
-            monopolyState.isMoving = true;
-            const res = Math.floor(Math.random() * 6) + 1;
-            document.getElementById('dice').innerText = "🎲";
-            setTimeout(() => {
-                document.getElementById('dice').innerText = res;
-                let moved = 0;
-                const interval = setInterval(() => {
-                    const p = monopolyState.turn === 1 ? monopolyState.p1 : monopolyState.p2;
-                    p.pos = (p.pos + 1) % 24;
-                    movePawns();
-                    moved++;
-                    if (moved >= res) {
-                        clearInterval(interval);
-                        setTimeout(handleLanding, 400);
-                    }
-                }, 180);
-            }, 500);
-        }
+        // 启动流程
+        (async () => {
+            onAuthStateChanged(auth, (u) => {
+                state.user = u;
+                if (u) initSync();
+            });
 
-        function handleLanding() {
-            const pIdx = monopolyState.turn;
-            const p = monopolyState[`p${pIdx}`];
-            const otherIdx = pIdx === 1 ? 2 : 1;
-            const otherP = monopolyState[`p${otherIdx}`];
-
-            if (p.pos === 0) {
-                p.cash += 200;
-                pop("💰 科学资助", "经过起点，获得 $200。", [{t: "好", f: "nextTurn();"}]);
-                return;
-            }
-
-            const owner = monopolyState.owners[p.pos];
-            if (owner && owner !== pIdx) {
-                const fee = 200;
-                p.cash -= fee; otherP.cash += fee;
-                pop("💸 支付路费", `进入 P${owner} 的实验室，支付 $${fee}。`, [{t: "支付", f: "nextTurn();"}]);
-                return;
-            }
-
-            if (owner === pIdx || p.cash < 150) {
-                pop(owner === pIdx ? "🏠 巡视中" : "⚠️ 经费不足", owner === pIdx ? "这是你的地盘。" : "经费不足建立实验室。", [{t: "结束回合", f: "nextTurn();"}]);
-                return;
-            }
-
-            const qArr = window.currentConfig.questions;
-            const q = qArr[Math.floor(Math.random() * qArr.length)];
-            document.getElementById('pop-icon').innerText = "🧪";
-            document.getElementById('pop-title').innerText = "科学挑战";
-            document.getElementById('pop-body').innerText = q.q;
-            const footer = document.getElementById('pop-footer');
-            footer.innerHTML = q.a.map((opt, i) => `
-                <button onclick="checkMonopolyAns(${i === q.c})" class="p-3 border rounded-xl text-[10px] font-bold hover:bg-slate-50">${opt}</button>
-            `).join('');
-            document.getElementById('overlay').classList.remove('hidden');
-        }
-
-        function checkMonopolyAns(correct) {
-            if (correct) {
-                pop("✅ 回答正确", "是否花费 $150 建立研究站？", [{t: "确认购买", f: "buyProperty();"}, {t: "跳过", f: "nextTurn();"}]);
-            } else {
-                pop("❌ 错误", "科学数据有误，无法建立站点。", [{t: "跳过", f: "nextTurn();"}]);
-            }
-        }
-
-        function buyProperty() {
-            const pIdx = monopolyState.turn;
-            const p = monopolyState[`p${pIdx}`];
-            p.cash -= 150;
-            monopolyState.owners[p.pos] = pIdx;
-            const cell = document.getElementById(`cell-${p.pos}`);
-            cell.style.backgroundColor = pIdx === 1 ? '#fee2e2' : '#dbeafe';
-            cell.innerHTML += `<div class="owner-badge ${pIdx === 1 ? 'bg-red-500' : 'bg-blue-500'} text-white">P${pIdx}</div>`;
-            hidePop();
-            nextTurn();
-        }
-
-        function nextTurn() {
-            monopolyState.turn = monopolyState.turn === 1 ? 2 : 1;
-            monopolyState.isMoving = false;
-            updateMonopolyUI();
-            hidePop();
-        }
-
-        function updateMonopolyUI() {
-            document.getElementById('p1-cash').innerText = monopolyState.p1.cash;
-            document.getElementById('p2-cash').innerText = monopolyState.p2.cash;
-            document.getElementById('p1-card').style.opacity = monopolyState.turn === 1 ? "1" : "0.5";
-            document.getElementById('p2-card').style.opacity = monopolyState.turn === 2 ? "1" : "0.5";
-        }
-
-        function resetQuiz() {
-            const qArr = window.currentConfig.questions;
-            quizState = { index: 0, score: 0, shuffled: [...qArr].sort(() => Math.random() - 0.5).slice(0, 10) };
-            document.getElementById('quiz-content').classList.remove('hidden');
-            document.getElementById('quiz-result').classList.add('hidden');
-            renderQuizQuestion();
-        }
-
-        function renderQuizQuestion() {
-            const q = quizState.shuffled[quizState.index];
-            document.getElementById('quiz-progress').innerText = `第 ${quizState.index + 1}/10 题`;
-            document.getElementById('quiz-score').innerText = quizState.score;
-            document.getElementById('quiz-question').innerText = q.q;
-            document.getElementById('quiz-options').innerHTML = q.a.map((opt, i) => `
-                <button onclick="handleQuizAnswer(${i === q.c})" class="p-4 bg-slate-50 border-2 border-slate-100 rounded-xl text-left text-sm font-bold hover:border-emerald-500 hover:bg-emerald-50 transition-all">${opt}</button>
-            `).join('');
-        }
-
-        function handleQuizAnswer(correct) {
-            if (correct) quizState.score += 10;
-            quizState.index++;
-            if (quizState.index < quizState.shuffled.length) renderQuizQuestion();
-            else showQuizResult();
-        }
-
-        function showQuizResult() {
-            document.getElementById('quiz-content').classList.add('hidden');
-            document.getElementById('quiz-result').classList.remove('hidden');
-            document.getElementById('quiz-final-text').innerText = `得分: ${quizState.score} / 100`;
-        }
-
-        function pop(title, body, btns) {
-            document.getElementById('pop-title').innerText = title;
-            document.getElementById('pop-body').innerHTML = `<p>${body}</p>`;
-            const f = document.getElementById('pop-footer');
-            f.innerHTML = btns.map(b => `<button onclick="${b.f}" class="p-3 bg-slate-900 text-white rounded-xl text-xs font-black shadow-lg hover:bg-slate-800">${b.t}</button>`).join('');
-            document.getElementById('overlay').classList.remove('hidden');
-        }
-
-        function hidePop() { document.getElementById('overlay').classList.add('hidden'); }
-        window.onload = () => { if(typeof renderEditor === 'function') renderEditor(); };
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                setupHandlers();
+            } catch (e) { console.error("Auth Fail:", e); }
+        })();
     </script>
 </body>
 </html>
